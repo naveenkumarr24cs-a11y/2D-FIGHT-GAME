@@ -22,6 +22,9 @@ export class Engine {
     this._lastTime     = 0;
     this._updateCb     = null;
     this._rafId        = null;
+    
+    this.slowMoFactor = 1;
+    this.slowMoTimer = 0;
 
     // Crisp pixel rendering (avoid sub-pixel blur)
     this.ctx.imageSmoothingEnabled = false;
@@ -34,7 +37,7 @@ export class Engine {
   _resize() {
     const ratio    = this.width / this.height;
     const winW     = window.innerWidth;
-    const winH     = window.innerHeight - 60; // leave room for controls bar
+    const winH     = window.innerHeight; // full viewport
     const winRatio = winW / winH;
 
     let dW, dH;
@@ -67,12 +70,23 @@ export class Engine {
     if (this._rafId) cancelAnimationFrame(this._rafId);
   }
 
+  setSlowMo(factor, duration) {
+    this.slowMoFactor = factor;
+    this.slowMoTimer = duration;
+  }
+
   _loop(timestamp) {
     if (!this._running) return;
 
     let dt = (timestamp - this._lastTime) / 1000;
     this._lastTime = timestamp;
     dt = Math.min(dt, 0.05); // Cap at 50 ms
+
+    if (this.slowMoTimer > 0) {
+      dt *= this.slowMoFactor;
+      this.slowMoTimer -= dt / this.slowMoFactor; // reduce timer by real time
+      if (this.slowMoTimer <= 0) this.slowMoFactor = 1;
+    }
 
     this.ctx.clearRect(0, 0, this.width, this.height);
     this._updateCb(dt);

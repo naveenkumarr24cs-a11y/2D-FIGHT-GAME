@@ -134,3 +134,67 @@ export class SpriteSheetAnimator {
 
   get isComplete() { return this.done; }
 }
+
+/**
+ * DirectionalSprite – For Character 1 where each action is a separate single-frame PNG per direction.
+ * Bypasses the canvas horizontal flip and instead draws the native _left or _right image.
+ */
+export class DirectionalSprite {
+  constructor({ imgLeft, imgRight }) {
+    this.imgLeft = imgLeft;
+    this.imgRight = imgRight;
+    this.image = imgRight || imgLeft; // Fallback for size checks if needed
+    this.done = false;
+  }
+  update(dt) {}
+  reset() { this.done = false; }
+  draw(ctx, x, y, displayW, displayH, flipped = false) {
+    // flipped == true generally means facing left (-1)
+    const img = flipped ? this.imgLeft : this.imgRight;
+    if (!img) return;
+    // Draw whole image, no sub-rect slicing needed
+    ctx.drawImage(img, x, y, displayW, displayH);
+  }
+  get isComplete() { return false; }
+}
+
+/**
+ * FallbackSpriteWrapper – Wraps another sprite (e.g. DirectionalSprite idle) and applies
+ * visual tint/flash effects to simulate missing states (hurt, death, crouch, block).
+ */
+export class FallbackSpriteWrapper {
+  constructor(baseSprite, effectType) {
+    this.baseSprite = baseSprite;
+    this.effectType = effectType;
+    this.done = false;
+    this.elapsed = 0;
+  }
+  get image() { return this.baseSprite.image; }
+  update(dt) {
+    this.elapsed += dt;
+    if (this.effectType === 'death' && this.elapsed > 1.5) {
+      this.done = true;
+    }
+  }
+  reset() {
+    this.elapsed = 0;
+    this.done = false;
+    this.baseSprite.reset();
+  }
+  draw(ctx, x, y, displayW, displayH, flipped = false) {
+    ctx.save();
+    if (this.effectType === 'hurt') {
+      ctx.filter = 'brightness(2) sepia(1) hue-rotate(-50deg) saturate(5)';
+    } else if (this.effectType === 'death') {
+      ctx.filter = 'grayscale(100%) brightness(0.5)';
+      y += Math.min(this.elapsed * 40, displayH * 0.4);
+    } else if (this.effectType === 'crouch' || this.effectType.startsWith('block')) {
+      ctx.filter = 'brightness(0.6)';
+      y += displayH * 0.15;
+      displayH *= 0.85;
+    }
+    this.baseSprite.draw(ctx, x, y, displayW, displayH, flipped);
+    ctx.restore();
+  }
+  get isComplete() { return this.done; }
+}

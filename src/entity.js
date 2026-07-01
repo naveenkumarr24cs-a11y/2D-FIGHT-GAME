@@ -40,6 +40,7 @@ const STATE_DURATIONS = {
   [STATES.BLOCK_START]:   0.12,
   [STATES.HURT]:          0.40, // overridden by applyHit
   [STATES.DASH]:          0.22,
+  [STATES.ROLL]:          0.45,
   [STATES.TURNAROUND]:    0.15,
 };
 
@@ -56,7 +57,7 @@ const FLOOR_DAMP   = 0.78; // horizontal velocity damping per frame on ground
 const FLOOR_STOP   = 6;   // vx magnitude below which we zero out
 
 export class Entity {
-  constructor({ x, y, facing = 1, maxHealth = 100 }) {
+  constructor({ x, y, facing = 1, maxHealth = 100, displayScale = 2.2 }) {
     this.x       = x;
     this.y       = y;          // bottom of character
     this.groundY = y;
@@ -65,9 +66,11 @@ export class Entity {
     this.facing  = facing;    // 1 = right, -1 = left
     this.onGround = true;
 
+    this.displayScale = displayScale;
+
     // Hurtbox half-dimensions (relative to x/y)
-    this.hurtW = 54;
-    this.hurtH = 128;
+    this.hurtW = 24.5 * displayScale;
+    this.hurtH = 58 * displayScale;
 
     this.maxHealth = maxHealth;
     this.health    = maxHealth;
@@ -207,6 +210,7 @@ export class Entity {
         break;
 
       case STATES.DASH:
+      case STATES.ROLL:
         this.vx = 0;
         this.setState(STATES.IDLE);
         break;
@@ -271,18 +275,18 @@ export class Entity {
   getHitbox() {
     if (!this.hitActive) return null;
 
-    const reach = this.state === STATES.COMBO_ATTACK ? 100
-                : this.state === STATES.HEAVY_ATTACK ? 90
-                : 72;
+    const reach = (this.state === STATES.COMBO_ATTACK ? 45.5
+                : this.state === STATES.HEAVY_ATTACK ? 41
+                : 32.7) * this.displayScale;
     const offsetX = this.facing > 0
       ? this.hurtW / 2
       : -(this.hurtW / 2 + reach);
 
     return {
       x: this.x + offsetX,
-      y: this.y - 110,
+      y: this.y - 50 * this.displayScale,
       w: reach,
-      h: 65,
+      h: 29.5 * this.displayScale,
     };
   }
 

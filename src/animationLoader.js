@@ -8,7 +8,7 @@
  * (_AttackCombo2hit vs _AttackCombo, _CrouchFull vs _CrouchAll, etc.) are handled
  * automatically without hardcoding a shared list.
  */
-import { SpriteSheetAnimator } from './spritesheet.js';
+import { SpriteSheetAnimator, DirectionalSprite, FallbackSpriteWrapper } from './spritesheet.js';
 
 const FRAME_W = 120;
 const FRAME_H = 80;
@@ -140,7 +140,7 @@ const ONE_SHOT_STATES = new Set([
  * @param {number}   [fps=12]  Default playback fps
  * @returns {Promise<Record<string, SpriteSheetAnimator>>}
  */
-export async function loadFighterAnimations(basePath, files, fps = DEFAULT_FPS) {
+export async function loadColourAnimations(basePath, files, fps = DEFAULT_FPS, onlyIdle = false) {
   const primary   = {}; // state → best animator (non-NoMovement preferred)
   const secondary = {}; // state → NoMovement fallback
 
@@ -150,6 +150,7 @@ export async function loadFighterAnimations(basePath, files, fps = DEFAULT_FPS) 
       console.warn(`[AnimLoader] No match for: ${filename}`);
       return;
     }
+    if (onlyIdle && state !== 'idle') return;
 
     const url   = `${basePath}/${filename}`;
     const image = await loadImage(url);
@@ -224,3 +225,5 @@ export async function loadFighterAnimations(basePath, files, fps = DEFAULT_FPS) 
   console.log(`[AnimLoader] Done. States loaded:`, Object.keys(result).sort().join(', '));
   return result;
 }
+
+

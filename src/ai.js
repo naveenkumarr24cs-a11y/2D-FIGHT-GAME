@@ -16,7 +16,7 @@ const DIFFICULTY = {
   //            reactionBase  reactionJitter  blockChance  aggression  walkSpeed
   easy:   { reactionBase: 0.55, reactionJitter: 0.20, blockChance: 0.06, aggression: 0.25, walkSpeed: 150 },
   medium: { reactionBase: 0.28, reactionJitter: 0.10, blockChance: 0.45, aggression: 0.65, walkSpeed: 220 },
-  hard:   { reactionBase: 0.08, reactionJitter: 0.05, blockChance: 0.82, aggression: 0.90, walkSpeed: 270 },
+  hard:   { reactionBase: 0.03, reactionJitter: 0.02, blockChance: 0.65, aggression: 0.98, walkSpeed: 300 },
 };
 
 const ATTACK_RANGE      = 140; // px – try to attack within this distance
@@ -90,7 +90,11 @@ export class AIController {
         this._setAiState('block');
         return;
       }
-      if (Math.random() < 0.35) {
+      const dodgeRoll = Math.random();
+      if (dodgeRoll < 0.25) {
+        this._setAiState('roll_away');
+        return;
+      } else if (dodgeRoll < 0.6) {
         this._setAiState('retreat');
         return;
       }
@@ -102,20 +106,28 @@ export class AIController {
       return;
     }
 
-    if (dist > ATTACK_RANGE + 80) {
-      // Far — approach
-      this._setAiState('approach');
+    if (dist > ATTACK_RANGE + 120) {
+      // Far — approach or dash/jump
+      if (Math.random() < 0.3) {
+        this._setAiState('dash_forward');
+      } else if (Math.random() < 0.2) {
+        this._setAiState('jump_forward');
+      } else {
+        this._setAiState('approach');
+      }
     } else if (dist <= ATTACK_RANGE) {
       // In range — decide whether to attack or not
       if (Math.random() < this.cfg.aggression) {
         this._setAiState('attack');
         // Choose attack type with weighted random
-        if (this._specialCD <= 0 && Math.random() < 0.22) {
+        if (this._specialCD <= 0 && Math.random() < 0.35) {
           this._pendingAttack = 'combo';
-          this._specialCD     = 4.5 + Math.random() * 2;
-        } else if (this._heavyCD <= 0 && Math.random() < 0.38) {
+          this._specialCD     = 3.0 + Math.random();
+        } else if (this._heavyCD <= 0 && Math.random() < 0.55) {
           this._pendingAttack = 'heavy';
-          this._heavyCD       = 1.8 + Math.random();
+          this._heavyCD       = 1.2 + Math.random();
+        } else if (Math.random() < 0.3) {
+          this._pendingAttack = 'crouch';
         } else {
           this._pendingAttack = 'light';
         }
@@ -145,6 +157,32 @@ export class AIController {
 
     switch (this._aiState) {
 
+      case 'dash_forward':
+        if (s.canAct() && s.onGround) {
+          s.vx = toTarget * 600; 
+          s.setState(STATES.DASH);
+        }
+        this._setAiState('idle');
+        break;
+
+      case 'jump_forward':
+        if (s.canAct() && s.onGround) {
+          s.vy = -720;
+          s.vx = toTarget * 300;
+          s.onGround = false;
+          s.setState(STATES.JUMP);
+        }
+        this._setAiState('idle');
+        break;
+
+      case 'roll_away':
+        if (s.canAct() && s.onGround) {
+          s.vx = -toTarget * 500;
+          s.setState(STATES.ROLL);
+        }
+        this._setAiState('idle');
+        break;
+
       case 'approach':
         if (s.canAct()) {
           const dist = Math.abs(t.x - s.x);
@@ -165,6 +203,7 @@ export class AIController {
           switch (this._pendingAttack) {
             case 'combo': s.setState(STATES.COMBO_ATTACK);  break;
             case 'heavy': s.setState(STATES.HEAVY_ATTACK);  break;
+            case 'crouch': s.setState(STATES.CROUCH_ATTACK); break;
             default:      s.setState(STATES.LIGHT_ATTACK);  break;
           }
           this._pendingAttack = null;

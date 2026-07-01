@@ -62,6 +62,56 @@ export class Background {
       ctx.fillStyle = '#0d0d18';
       ctx.fillRect(0, 0, canvasW, canvasH);
     }
+    
+    this._drawFloorTiles(ctx, canvasW, canvasH, 628);
+  }
+
+  _drawFloorTiles(ctx, w, h, groundY) {
+    ctx.save();
+    
+    const floorHeight = h - groundY;
+    
+    // Fading gradient to blend tiles into the background image
+    const grad = ctx.createLinearGradient(0, groundY, 0, h);
+    grad.addColorStop(0, 'rgba(0,0,0,0.85)');
+    grad.addColorStop(0.15, 'rgba(10,15,30,0.5)');
+    grad.addColorStop(1, 'rgba(15,25,45,0.1)');
+    
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, groundY, w, floorHeight);
+    
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    
+    // Horizontal perspective lines
+    for (let i = 0; i <= 6; i++) {
+      const y = groundY + Math.pow(i / 6, 1.8) * floorHeight;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+    
+    // Vertical perspective lines originating from vanishing point
+    const vanishingY = groundY - 100;
+    for (let i = -14; i <= 14; i++) {
+      const xOrigin = w / 2 + i * 80;
+      
+      // Calculate intersection at groundY
+      const dx = xOrigin - w/2;
+      const dy = groundY - vanishingY;
+      const slope = dx / dy;
+      
+      const xTop = w/2 + slope * (groundY - vanishingY);
+      const xBottom = w/2 + slope * (h - vanishingY);
+      
+      ctx.beginPath();
+      ctx.moveTo(xTop, groundY);
+      ctx.lineTo(xBottom, h);
+      ctx.stroke();
+    }
+    
+    ctx.restore();
   }
 }
 

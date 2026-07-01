@@ -7,12 +7,6 @@
  */
 import { Entity, STATES } from './entity.js';
 
-/** Display scale applied to 120×80 sprite frames. */
-const DISPLAY_SCALE = 2.2;
-const FRAME_W = 120;
-const FRAME_H = 80;
-const DISPLAY_W = FRAME_W * DISPLAY_SCALE; // 264 px
-const DISPLAY_H = FRAME_H * DISPLAY_SCALE; // 176 px
 
 /** Map each entity state to the animation key returned by animationLoader. */
 const STATE_ANIM = {
@@ -49,14 +43,16 @@ export class Fighter extends Entity {
    * @param {string} [opts.color]   Placeholder rect colour
    * @param {boolean}[opts.isPlayer]
    */
-  constructor({ x, y, facing = 1, animations = {}, color = '#4af', isPlayer = false }) {
-    super({ x, y, facing });
+  constructor({ x, y, facing = 1, animations = {}, color = '#4af', isPlayer = false, displayScale = 2.2, shadowW = 50 }) {
+    super({ x, y, facing, displayScale });
     this.animations = animations;
     this.color      = color;
     this.isPlayer   = isPlayer;
+    this.displayScale = displayScale;
+    this.shadowW = shadowW;
 
-    this._currentAnim  = null;
-    this._prevAnimKey  = null;
+    this._prevAnimKey  = 'idle';
+    this._currentAnim  = this.animations['idle'] || null;
 
     // Screen-shake per-fighter (heavy hits)
     this.shakeX     = 0;
@@ -110,6 +106,15 @@ export class Fighter extends Entity {
     }
     if (!block && (this.state === STATES.BLOCK_HOLD || this.state === STATES.BLOCK_START)) {
       this.setState(STATES.IDLE);
+    }
+
+    // ── Roll (Dodge) ─────────────────────────────────────────────────────
+    if (input.isPressed('roll') && this.onGround) {
+      this.vx = (this.facing > 0 ? 1 : -1) * 500; 
+      if (moveL) this.vx = -500;
+      if (moveR) this.vx = 500;
+      this.setState(STATES.ROLL);
+      return;
     }
 
     // ── Crouch ────────────────────────────────────────────────────────────
@@ -191,8 +196,28 @@ export class Fighter extends Entity {
 
   draw(ctx) {
     const flipped = this.facing < 0;
-    const drawX   = this.x - DISPLAY_W / 2 + this.shakeX;
-    const drawY   = this.y - DISPLAY_H    + this.shakeY;
+    const w = this._currentAnim?.frameW || this._currentAnim?.image?.width || 120;
+    const h = this._currentAnim?.frameH || this._currentAnim?.image?.height || 80;
+    const displayW = w * this.displayScale;
+    const displayH = h * this.displayScale;
+    
+    const drawX   = this.x - displayW / 2 + this.shakeX;
+    const drawY   = this.y - displayH    + this.shakeY;
+
+    // Draw shadow
+    if (this.state !== STATES.DEATH || this.stateTimer < 1.5) {
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.scale(1, 0.25);
+      const rad = ctx.createRadialGradient(0, 0, 0, 0, 0, this.shadowW);
+      rad.addColorStop(0, 'rgba(0,0,0,0.6)');
+      rad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = rad;
+      ctx.beginPath();
+      ctx.arc(0, 0, this.shadowW, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
 
     if (this._currentAnim?.image) {
       // Death: fade out
@@ -200,14 +225,14 @@ export class Fighter extends Entity {
         const alpha = Math.max(0, 1 - (this.stateTimer - 1.5) / 1.5);
         ctx.globalAlpha = Math.min(1, alpha);
       }
-      this._currentAnim.draw(ctx, drawX, drawY, DISPLAY_W, DISPLAY_H, flipped);
+      this._currentAnim.draw(ctx, drawX, drawY, displayW, displayH, flipped);
       ctx.globalAlpha = 1;
     } else {
       // Placeholder rectangle
       ctx.fillStyle = this.color;
       ctx.globalAlpha = this.state === STATES.DEATH ? 0.35 : 1;
-      ctx.fillRect(drawX + DISPLAY_W * 0.15, drawY + DISPLAY_H * 0.2,
-                   DISPLAY_W * 0.7, DISPLAY_H * 0.75);
+      ctx.fillRect(drawX + displayW * 0.15, drawY + displayH * 0.2,
+                   displayW * 0.7, displayH * 0.75);
       ctx.globalAlpha = 1;
 
       // Placeholder: direction indicator
@@ -243,8 +268,8 @@ export class Fighter extends Entity {
 
   reset(x, y, facing) {
     super.reset(x, y, facing);
-    this._prevAnimKey = null;
-    this._currentAnim = null;
+    this._prevAnimKey = 'idle';
+    this._currentAnim = this.animations['idle'] || null;
     this.shakeTimer   = 0;
     this.shakeX       = 0;
     this.shakeY       = 0;

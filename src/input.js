@@ -18,17 +18,20 @@ export class Input {
       heavyAttack: ['KeyK'],
       comboAttack: ['KeyL'],
       block:       ['ShiftLeft', 'ShiftRight'],
+      roll:        ['Space', 'KeyC'],
     };
 
     window.addEventListener('keydown', (e) => {
       this._keys[e.code] = true;
+      if (e.key === ' ') this._keys['Space'] = true;
       // Prevent arrow-key page scroll
-      if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space'].includes(e.code)) {
+      if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space'].includes(e.code) || e.key === ' ') {
         e.preventDefault();
       }
     });
     window.addEventListener('keyup', (e) => {
       this._keys[e.code] = false;
+      if (e.key === ' ') this._keys['Space'] = false;
     });
   }
 
