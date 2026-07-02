@@ -223,17 +223,81 @@ async function init() {
     }
 
     if (gameState === GS.MODE_SELECT) {
-      const mode = lobbyUI.getHoveredMode();
+      const mode = lobbyUI.getHoveredMode(mx, my);
       if (!mode) return; // clicked outside buttons
       if (mode === 'cpu')    { isOnline = false; startFirstMatch(); }
       if (mode === 'create') { startCreateRoom(); }
       if (mode === 'join')   { gameState = GS.LOBBY_JOIN; joinTypedCode = ''; joinErrorMsg = ''; }
     }
+
+    // MATCH_END — tap anywhere to play again (mobile has no keyboard)
+    if (gameState === GS.MATCH_END) {
+      roundWins = [0, 0];
+      if (isOnline) { netplay.disconnect(); isOnline = false; gameState = GS.MODE_SELECT; }
+      else { startFirstMatch(); }
+      return;
+    }
+
+    // OPPONENT_LEFT — tap anywhere to return to menu
+    if (gameState === GS.OPPONENT_LEFT) {
+      netplay.disconnect();
+      isOnline = false;
+      gameState = GS.MODE_SELECT;
+      return;
+    }
   });
 
-  canvas.addEventListener('touchstart', () => {
-    if (gameState === GS.TITLE || gameState === GS.CINEMATIC_INTRO)
+  canvas.addEventListener('touchstart', (e) => {
+    if (gameState === GS.TITLE || gameState === GS.CINEMATIC_INTRO) {
       document._startClicked = true;
+      return;
+    }
+
+    // On mobile, tap anywhere on MATCH_END screen to play again
+    if (gameState === GS.MATCH_END) {
+      roundWins = [0, 0];
+      if (isOnline) { netplay.disconnect(); isOnline = false; gameState = GS.MODE_SELECT; }
+      else { startFirstMatch(); }
+      return;
+    }
+
+    // On mobile, tap anywhere on OPPONENT_LEFT to go back to menu
+    if (gameState === GS.OPPONENT_LEFT) {
+      netplay.disconnect();
+      isOnline = false;
+      gameState = GS.MODE_SELECT;
+      return;
+    }
+
+    // On mobile, handle MODE_SELECT taps via canvas coordinates
+    if (gameState === GS.MODE_SELECT) {
+      const rect = canvas.getBoundingClientRect();
+      const t = e.changedTouches[0];
+      const mx = (t.clientX - rect.left) * (CANVAS_W / rect.width);
+      const my = (t.clientY - rect.top)  * (CANVAS_H / rect.height);
+      const mode = lobbyUI.getHoveredMode(mx, my);
+      if (mode === 'cpu')    { isOnline = false; startFirstMatch(); }
+      if (mode === 'create') { startCreateRoom(); }
+      if (mode === 'join')   { gameState = GS.LOBBY_JOIN; joinTypedCode = ''; joinErrorMsg = ''; }
+      return;
+    }
+
+    // Pause menu tap handling on mobile
+    if (gameState === GS.PAUSED) {
+      const rect = canvas.getBoundingClientRect();
+      const t = e.changedTouches[0];
+      const mx = (t.clientX - rect.left) * (CANVAS_W / rect.width);
+      const my = (t.clientY - rect.top)  * (CANVAS_H / rect.height);
+      if (mx >= CANVAS_W/2 - 110 && mx <= CANVAS_W/2 + 110) {
+        if (my >= 320 && my <= 370) { gameState = GS.FIGHTING; return; }
+        if (my >= 390 && my <= 440) {
+          roundWins = [0, 0]; isFirstMatch = true;
+          if (isOnline) netplay.disconnect();
+          isOnline = false; gameState = GS.MODE_SELECT; return;
+        }
+      }
+      return;
+    }
   });
 
   // ── Input: keyboard ──────────────────────────────────────────────────────

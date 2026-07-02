@@ -114,7 +114,28 @@ export class LobbyUI {
     return { buttons: MODES.map((m, i) => ({ id: m.id, index: i })) };
   }
 
-  getHoveredMode() { return this._hoveredBtn >= 0 ? MODES[this._hoveredBtn].id : null; }
+  /**
+   * Returns the hovered mode id.
+   * If mx/my are provided, performs a direct hit-test (for touch events).
+   * Otherwise falls back to the mouse-hover state tracked during draw.
+   */
+  getHoveredMode(mx, my) {
+    if (mx !== undefined && my !== undefined) {
+      // Direct hit-test using same layout as drawModeSelect
+      const btnW = 340, btnH = 110, gap = 30;
+      const totalW = MODES.length * btnW + (MODES.length - 1) * gap;
+      const startX = (CANVAS_W - totalW) / 2;
+      const btnY   = CANVAS_H / 2 - btnH / 2 + 30;
+      for (let i = 0; i < MODES.length; i++) {
+        const bx = startX + i * (btnW + gap);
+        if (mx >= bx && mx <= bx + btnW && my >= btnY && my <= btnY + btnH) {
+          return MODES[i].id;
+        }
+      }
+      return null;
+    }
+    return this._hoveredBtn >= 0 ? MODES[this._hoveredBtn].id : null;
+  }
 
   // ── Draw: Create Room (lobby waiting) ────────────────────────────────────
 

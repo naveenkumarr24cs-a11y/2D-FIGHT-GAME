@@ -481,9 +481,9 @@ export class UI {
     ctx.restore();
 
     ctx.font      = FONT_SMALL;
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.textAlign = 'center';
-    ctx.fillText('Press  ENTER  to play again', CANVAS_W / 2, CANVAS_H / 2 + 130);
+    ctx.fillText('Tap screen  /  Press ENTER  to play again', CANVAS_W / 2, CANVAS_H / 2 + 130);
   }
 }
 
