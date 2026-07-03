@@ -250,6 +250,32 @@ async function init() {
       gameState = GS.MODE_SELECT;
       return;
     }
+
+    // LOBBY_JOIN — numpad click handler
+    if (gameState === GS.LOBBY_JOIN) {
+      const key = lobbyUI.getNumpadKey(mx, my);
+      if (key !== null) {
+        if (key === '⌫') {
+          joinTypedCode = joinTypedCode.slice(0, -1);
+        } else if (key === '✔JOIN') {
+          if (joinTypedCode.length === 6) handleJoinRoom(joinTypedCode);
+        } else if (key === '✔BACK') {
+          gameState = GS.MODE_SELECT;
+        } else if (joinTypedCode.length < 6) {
+          joinTypedCode += key;
+        }
+        return;
+      }
+    }
+
+    // LOBBY_CREATE — tap BACK button to cancel
+    if (gameState === GS.LOBBY_CREATE) {
+      if (lobbyUI.getCreateRoomBackHit(mx, my)) {
+        netplay.disconnect();
+        gameState = GS.MODE_SELECT;
+        return;
+      }
+    }
   });
 
   canvas.addEventListener('touchstart', (e) => {
