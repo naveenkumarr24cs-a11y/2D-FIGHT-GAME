@@ -161,6 +161,9 @@ async function init() {
   let isFirstMatch = true;
   let selectedBgKey = 'bg_1';
 
+  const bgMusic = document.getElementById('bg-music');
+  if (bgMusic) bgMusic.volume = 0.4;
+
   // Online multiplayer state
   let isOnline      = false;
   let localSlot     = 1;     // which slot we are (1=P1, 2=P2)
@@ -486,9 +489,10 @@ async function init() {
     selectedBgKey = bgKeys.length ? bgKeys[Math.floor(Math.random() * bgKeys.length)] : 'bg_1';
 
     // In online: both clients must pick the SAME map.
-    // Host (P1) picks the map. A real implementation would sync this via server.
-    // For now we seed with the same map always when online.
-    if (isOnline) selectedBgKey = bgKeys[0] ?? 'bg_1';
+    // We use the deterministic mapSeed provided by the server!
+    if (isOnline && netplay.mapSeed !== null) {
+      selectedBgKey = bgKeys[netplay.mapSeed % bgKeys.length];
+    }
 
     await background.load(selectedBgKey);
 
@@ -559,13 +563,17 @@ async function init() {
     p2ComboTimer  = snap.p2ComboTimer;
     return true;
   }
-
   // ── Fixed timestep for online determinism ────────────────────────────────
   const FIXED_DT   = 1 / 60;
   let   accumulator = 0;
 
   // ── Main loop ─────────────────────────────────────────────────────────────
   engine.start((dt) => {
+    if (bgMusic) {
+      const isMatch = [GS.CINEMATIC_INTRO, GS.ROUND_INTRO, GS.FIGHTING, GS.PAUSED, GS.ROUND_END, GS.MATCH_END, GS.OPPONENT_LEFT].includes(gameState);
+      if (isMatch && bgMusic.paused) bgMusic.play().catch(()=>{});
+      if (!isMatch && !bgMusic.paused) { bgMusic.pause(); bgMusic.currentTime = 0; }
+    }
     ui.update(dt);
     lobbyUI.update(dt);
 
