@@ -652,8 +652,10 @@ async function init() {
       return;
     }
 
-    // ── Active game: run fixed timestep only during online play ─────────────
-    if (isOnline && gameState === GS.FIGHTING) {
+    // ── Active game: fixed timestep for online, variable for offline ──────────
+    if (isOnline) {
+      // Fix 3: Run fixed-step accumulator for ALL online states (ROUND_INTRO,
+      // FIGHTING, ROUND_END) so both clients always step in sync.
       accumulator += Math.min(dt, 0.1);
       while (accumulator >= FIXED_DT) {
         accumulator -= FIXED_DT;
@@ -801,6 +803,14 @@ async function init() {
       if (canRollback && restoreFrameSnapshot(rbFrame)) {
         console.log(`[Rollback] frame=${frameCount} → restoring to frame ${rbFrame}, re-simulating ${frameCount - rbFrame} frames`);
 
+        // Fix 6: Refresh remoteInputHistory from confirmed netplay ring buffer
+        // BEFORE re-simulation, so we replay with the correct (now-confirmed) inputs.
+        for (let f = rbFrame; f < frameCount; f++) {
+          if (netplay.isConfirmed(f)) {
+            remoteInputHistory[f] = netplay.getRemoteInput(f);
+          }
+        }
+
         // Re-simulate every frame from rbFrame up to (but not including) current
         for (let f = rbFrame; f < frameCount; f++) {
           const lm = localInputHistory[f]  ?? 0;
@@ -825,6 +835,11 @@ async function init() {
           roundTimer -= FIXED_DT;
         }
 
+        // Fix 5: Restore prevMasks to post-re-sim values so the very next frame's
+        // Input.deserialize() gets correct justPressed detection (no phantom buttons).
+        prevLocalMask  = localInputHistory[frameCount - 1]  ?? 0;
+        prevRemoteMask = remoteInputHistory[frameCount - 1] ?? 0;
+
         // Update remote history with the now-confirmed inputs
         remoteInputHistory[frameCount] = netplay.getRemoteInput(frameCount);
       }
@@ -836,20 +851,22 @@ async function init() {
     prevLocalMask  = myInputMask;
     prevRemoteMask = remoteInputMask;
 
+    // Fix 2: Use FIXED_DT for ALL physics in the live frame — NOT the variable dt
+    // from requestAnimationFrame. Using dt causes drift between 60Hz and 120Hz screens.
     localFighter.handleInput(myInput);
     remoteFighter.applyRemoteInput(remoteInput);
 
     // 7. Physics
     if (p1.onGround && p1.canAct()) p1.facing = p2.x > p1.x ? 1 : -1;
     if (p2.onGround && p2.canAct()) p2.facing = p1.x > p2.x ? 1 : -1;
-    p1.update(dt, p2.x);
-    p2.update(dt, p1.x);
+    p1.update(FIXED_DT, p2.x);
+    p2.update(FIXED_DT, p1.x);
     pushApart(p1, p2);
     background.update(p1.x, p2.x, CANVAS_W);
 
     // 8. Combo timers
-    if (p1ComboTimer > 0) { p1ComboTimer -= dt; if (p1ComboTimer <= 0) p1Combo = 0; }
-    if (p2ComboTimer > 0) { p2ComboTimer -= dt; if (p2ComboTimer <= 0) p2Combo = 0; }
+    if (p1ComboTimer > 0) { p1ComboTimer -= FIXED_DT; if (p1ComboTimer <= 0) p1Combo = 0; }
+    if (p2ComboTimer > 0) { p2ComboTimer -= FIXED_DT; if (p2ComboTimer <= 0) p2Combo = 0; }
 
     // 9. Combat
     combat.check(p1, p2, (hit) => {
@@ -866,7 +883,7 @@ async function init() {
     });
 
     // 10. Round end
-    roundTimer -= dt;
+    roundTimer -= FIXED_DT;
     const d1 = p1.health <= 0, d2 = p2.health <= 0;
     if (d1 || d2) {
       if (d2 && !d1) ui.flashText('K.O.!', 2.0, c1.color);

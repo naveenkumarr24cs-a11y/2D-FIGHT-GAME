@@ -33,7 +33,7 @@
 const BUFFER_SIZE  = 256;      // ring buffer capacity (must be power of 2)
 const BUFFER_MASK  = BUFFER_SIZE - 1;
 const MAX_ROLLBACK = 8;        // maximum frames to roll back
-const MIN_DELAY    = 1;        // minimum input delay frames
+const MIN_DELAY    = 2;        // minimum input delay frames (must be >= ceil(server_RTT/16))
 const MAX_DELAY    = 6;        // maximum input delay frames
 
 export const NetplayStatus = Object.freeze({
@@ -56,7 +56,8 @@ export class NetplayClient {
     this.ping           = 0;
     this._pingTs        = 0;
     this._rttSamples    = [];     // rolling window of RTT samples
-    this.inputDelay     = 2;      // current adaptive input delay (frames)
+    this.inputDelay     = 3;      // current adaptive input delay (frames)
+    this._delayLocked   = false;  // locked to true once match starts — no mid-match changes
 
     // ── Input ring buffers ───────────────────────────────────────────────
     // Uint16 arrays indexed by (frame & BUFFER_MASK)
@@ -200,9 +201,17 @@ export class NetplayClient {
 
   get isHost() { return this.playerSlot === 1; }
 
+  /** Returns true if the remote input for this frame has been confirmed (not predicted). */
+  isConfirmed(frame) {
+    return !!this._confirmed[frame & BUFFER_MASK];
+  }
+
   disconnect() {
     if (this._ws) { this._ws.close(); this._ws = null; }
-    this.status = NetplayStatus.DISCONNECTED;
+    this.status         = NetplayStatus.DISCONNECTED;
+    this._delayLocked   = false;   // allow delay to adapt again after disconnect
+    this._lastRemoteFrame = -1;
+    this._pendingRollback = null;
   }
 
   // ── Binary message handler ────────────────────────────────────────────────
@@ -256,8 +265,9 @@ export class NetplayClient {
         break;
 
       case 'start':
-        this.mapSeed    = msg.mapSeed ?? null;
-        this.status     = NetplayStatus.PLAYING;
+        this.mapSeed      = msg.mapSeed ?? null;
+        this.status       = NetplayStatus.PLAYING;
+        this._delayLocked = true;  // Fix 8: lock delay — no mid-match changes
         if (this.onStart) this.onStart(msg.yourSlot);
         break;
 
@@ -313,6 +323,9 @@ export class NetplayClient {
 
     // Adaptive input delay: 1 frame covers ~16ms at 60fps
     // We need at least ceil(ping/16) frames of delay to avoid rollbacks
+    // Fix 8: never change delay mid-match — only update before match starts
+    if (this._delayLocked) return;
+
     const needed = Math.ceil(this.ping / 16);
     const newDelay = Math.max(MIN_DELAY, Math.min(MAX_DELAY, needed));
 

@@ -92,16 +92,11 @@ function cleanupPlayer(ws) {
   console.log(`[Room ${info.id}] Closed. Active rooms: ${rooms.size}`);
 }
 
-// ── Server ─────────────────────────────────────────────────────────────────
-const wss = new WebSocketServer({
-  port: PORT,
-  // Enable per-message deflate compression (reduces JSON size ~60%)
-  perMessageDeflate: {
-    zlibDeflateOptions: { level: 1 },   // fastest compression
-    clientNoContextTakeover: true,
-    serverNoContextTakeover: true,
-  },
-});
+// ── Server ─────────────────────────────────────────────────────
+// Fix 10: Removed perMessageDeflate — compressing 6-byte binary packets wastes
+// CPU with zero size benefit (a 6-byte packet cannot be made smaller by zlib).
+// Every millisecond saved here is a millisecond less latency per input frame.
+const wss = new WebSocketServer({ port: PORT });
 
 console.log(`\n🗡  Knight Fight Game server v2 running on ws://localhost:${PORT}\n`);
 
@@ -120,8 +115,14 @@ setInterval(() => {
   }
 }, 1000);  // every 1 second (was 5s)
 
-// ── Connection handler ─────────────────────────────────────────────────────
+// ── Connection handler ─────────────────────────────────────────────────
 wss.on('connection', (ws) => {
+  // Fix 7: Disable TCP Nagle's algorithm. Without this, the OS holds small
+  // packets for up to 40ms waiting to batch them. For a 6-byte game input,
+  // that 40ms delay is catastrophic. setNoDelay(true) sends every packet
+  // to the network card immediately.
+  if (ws._socket) ws._socket.setNoDelay(true);
+
   ws._latency = 0;
   console.log(`Client connected. Total: ${wss.clients.size}`);
 
