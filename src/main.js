@@ -164,6 +164,21 @@ async function init() {
   const bgMusic = document.getElementById('bg-music');
   if (bgMusic) bgMusic.volume = 0.4;
 
+  // Browser Autoplay Policy: Unlock audio context on first user interaction
+  let _audioUnlocked = false;
+  const unlockAudio = () => {
+    if (_audioUnlocked || !bgMusic) return;
+    _audioUnlocked = true;
+    bgMusic.play().then(() => {
+      bgMusic.pause();
+      bgMusic.currentTime = 0;
+    }).catch(err => {
+      _audioUnlocked = false; // Try again on next click if it failed
+    });
+  };
+  window.addEventListener('click', unlockAudio);
+  window.addEventListener('touchstart', unlockAudio);
+
   // Online multiplayer state
   let isOnline      = false;
   let localSlot     = 1;     // which slot we are (1=P1, 2=P2)
