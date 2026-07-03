@@ -294,33 +294,25 @@ export class LobbyUI {
     );
     ctx.globalAlpha = 1;
 
-    // Mobile BACK button
-    const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    if (isMobile) {
-      const backW = 200, backH = 60;
-      const backX = CANVAS_W / 2 - backW / 2;
-      const backY = CANVAS_H - 100;
-      
-      this._createBackBtnLayout = { x: backX, y: backY, w: backW, h: backH };
-      
-      ctx.fillStyle = 'rgba(60,60,80,0.7)';
-      ctx.strokeStyle = 'rgba(245,230,200,0.25)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.roundRect(backX, backY, backW, backH, 12);
-      ctx.fill(); ctx.stroke();
-  
-      ctx.font = "700 22px 'Rajdhani', Arial";
-      ctx.fillStyle = 'rgba(245,230,200,0.7)';
-      ctx.textAlign = 'center';
-      ctx.shadowBlur = 0;
-      ctx.fillText('◀ BACK', CANVAS_W / 2, backY + 38);
-    } else {
-      ctx.font = "500 14px 'Rajdhani', Arial";
-      ctx.fillStyle = 'rgba(245,230,200,0.4)';
-      ctx.shadowBlur = 0;
-      ctx.fillText('Press  ESC  to cancel', CANVAS_W / 2, CANVAS_H - 50);
-    }
+    // BACK button (always show on both PC and mobile)
+    const backW = 200, backH = 60;
+    const backX = CANVAS_W / 2 - backW / 2;
+    const backY = CANVAS_H - 100;
+    
+    this._createBackBtnLayout = { x: backX, y: backY, w: backW, h: backH };
+    
+    ctx.fillStyle = 'rgba(60,60,80,0.7)';
+    ctx.strokeStyle = 'rgba(245,230,200,0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(backX, backY, backW, backH, 12);
+    ctx.fill(); ctx.stroke();
+
+    ctx.font = "700 22px 'Rajdhani', Arial";
+    ctx.fillStyle = 'rgba(245,230,200,0.7)';
+    ctx.textAlign = 'center';
+    ctx.shadowBlur = 0;
+    ctx.fillText('◀ BACK', CANVAS_W / 2, backY + 38);
 
     ctx.restore();
   }
@@ -428,8 +420,8 @@ export class LobbyUI {
     ctx.shadowBlur = 0;
 
     // BACK button
-    const backW = totalKW * 0.35, backH = keyH * 0.75;
-    const backX = CANVAS_W / 2 + joinW / 2 + kGap;
+    const backW = 160, backH = keyH * 0.85;
+    const backX = CANVAS_W / 2 + joinW / 2 + kGap * 2;
     const backY = joinY + (joinH - backH) / 2;
     this._backBtnLayout = { x: backX, y: backY, w: backW, h: backH };
 
