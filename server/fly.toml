@@ -1,0 +1,26 @@
+# fly.toml — Knight Fight Game WebSocket Server
+# Deployed on Fly.io Mumbai (bom) region for minimum latency to Indian players
+
+app = "knight-fight-server-bom"
+primary_region = "bom"    # Mumbai, India — ~15ms latency for Indian players
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https   = false    # WebSocket connections — do NOT force HTTPS redirect
+  auto_stop_machines  = false   # Never sleep — critical for real-time game server
+  auto_start_machines = true
+  min_machines_running = 1      # Always keep 1 instance alive
+
+  [http_service.concurrency]
+    type       = "connections"
+    hard_limit = 500
+    soft_limit = 400
+
+[[vm]]
+  size = "shared-cpu-1x"   # Free tier VM size
