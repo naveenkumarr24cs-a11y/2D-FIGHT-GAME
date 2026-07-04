@@ -20,7 +20,7 @@ import { CombatSystem }        from './combat.js';
 import { Background }          from './background.js';
 import { UI }                  from './ui.js';
 import { LobbyUI }             from './lobby-ui.js';
-import { NetplayClient, NetplayStatus } from './netplay.js';
+import { NetplayClient, NetplayStatus, MAX_ROLLBACK } from './netplay.js';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
