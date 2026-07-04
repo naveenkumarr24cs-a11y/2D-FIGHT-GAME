@@ -100,20 +100,7 @@ const wss = new WebSocketServer({ port: PORT });
 
 console.log(`\n🗡  Knight Fight Game server v2 running on ws://localhost:${PORT}\n`);
 
-// ── Fast ping: every 1 second for accurate adaptive delay ──────────────────
-setInterval(() => {
-  const now = Date.now();
-  for (const [, room] of rooms) {
-    // Send lightweight binary ping (4 bytes: timestamp)
-    const buf = Buffer.allocUnsafe(8);
-    buf.writeUInt8(0xFF, 0);        // marker byte: ping
-    buf.writeUInt8(0x00, 1);
-    buf.writeUInt32LE(now & 0xFFFFFFFF, 2); // low 32 bits of timestamp
-    buf.writeUInt16LE(0, 6);
-    if (room.p1) sendBinary(room.p1, buf);
-    if (room.p2) sendBinary(room.p2, buf);
-  }
-}, 1000);  // every 1 second (was 5s)
+// (Server no longer sends pings — ping is handled entirely P2P via WebRTC)
 
 // ── Connection handler ─────────────────────────────────────────────────
 wss.on('connection', (ws) => {

@@ -123,9 +123,8 @@ export class NetplayClient {
       };
 
       this._ws.onmessage = (evt) => {
-        if (evt.data instanceof ArrayBuffer) {
-          this._handleBinary(evt.data);
-        } else {
+        // We now ignore binary messages from the WebSocket (they only come over WebRTC)
+        if (typeof evt.data === 'string') {
           try { this._handleJSON(JSON.parse(evt.data)); } catch {}
         }
       };
