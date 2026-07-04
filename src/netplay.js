@@ -32,9 +32,11 @@
 
 const BUFFER_SIZE  = 256;      // ring buffer capacity (must be power of 2)
 const BUFFER_MASK  = BUFFER_SIZE - 1;
-const MAX_ROLLBACK = 8;        // maximum frames to roll back
+const MAX_ROLLBACK = 20;       // max frames to roll back (needs to cover one-way latency)
+                               // At 60fps: 300ms RTT = 150ms one-way = ~9 frames minimum
+                               // Set to 20 for safety margin on high-latency connections
 const MIN_DELAY    = 2;        // minimum input delay frames (must be >= ceil(server_RTT/16))
-const MAX_DELAY    = 6;        // maximum input delay frames
+const MAX_DELAY    = 10;       // maximum adaptive input delay (increased for high-latency)
 
 export const NetplayStatus = Object.freeze({
   DISCONNECTED: 'disconnected',

@@ -496,14 +496,40 @@ export class LobbyUI {
 
   // ── Ping Badge (draw during gameplay) ────────────────────────────────────
 
-  drawPingBadge(ctx, ping) {
-    const color = ping < 60 ? '#7ec850' : ping < 120 ? '#f0a500' : '#ef4444';
+  drawPingBadge(ctx, ping, inputDelay = 2) {
     ctx.save();
+
+    // Color & grade based on one-way ping
+    let color, grade;
+    if (ping < 60)       { color = '#7ec850'; grade = 'GOOD'; }
+    else if (ping < 120) { color = '#f0a500'; grade = 'OK'; }
+    else if (ping < 200) { color = '#ef4444'; grade = 'HIGH'; }
+    else                 { color = '#ff00ff'; grade = 'EXTREME'; }
+
+    // Badge background
+    const bx = CANVAS_W - 130, by = 6, bw = 122, bh = 28;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 6); ctx.fill();
+
+    // Ping text
     ctx.font = "700 13px 'Rajdhani', Arial";
-    ctx.textAlign = 'right';
+    ctx.textAlign = 'left';
     ctx.fillStyle = color;
     ctx.shadowColor = color; ctx.shadowBlur = 4;
-    ctx.fillText(`● ${ping}ms`, CANVAS_W - 10, 20);
+    ctx.fillText(`● ${ping}ms [${grade}]  D:${inputDelay}f`, bx + 7, by + 19);
+    ctx.shadowBlur = 0;
+
+    // High-latency warning banner
+    if (ping >= 150) {
+      const wx = CANVAS_W / 2 - 170, wy = CANVAS_H - 32, ww = 340, wh = 24;
+      ctx.fillStyle = 'rgba(239,68,68,0.82)';
+      ctx.beginPath(); ctx.roundRect(wx, wy, ww, wh, 5); ctx.fill();
+      ctx.font = "600 12px 'Rajdhani', Arial";
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.fillText('⚠ HIGH LATENCY — Server is far away. Corrections may be visible.', CANVAS_W / 2, wy + 16);
+    }
+
     ctx.restore();
   }
 

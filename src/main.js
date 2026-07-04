@@ -682,8 +682,8 @@ async function init() {
     });
 
     // Show ping badge during online match
-    if (isOnline && gameState === GS.FIGHTING) {
-      lobbyUI.drawPingBadge(ctx, netplay.ping);
+    if (isOnline && (gameState === GS.FIGHTING || gameState === GS.ROUND_INTRO || gameState === GS.ROUND_END)) {
+      lobbyUI.drawPingBadge(ctx, netplay.ping, netplay.inputDelay);
     }
   });
 
@@ -798,7 +798,9 @@ async function init() {
     const rb = netplay.consumeRollback();
     if (rb) {
       const rbFrame = Math.max(0, rb.toFrame);
-      const canRollback = rbFrame <= frameCount && rbFrame >= frameCount - MAX_SNAPSHOTS;
+      // Clamp rollback window to MAX_ROLLBACK (not MAX_SNAPSHOTS) so we don't
+      // try to re-simulate more frames than the rollback system can handle.
+      const canRollback = rbFrame <= frameCount && rbFrame >= frameCount - MAX_ROLLBACK;
 
       if (canRollback && restoreFrameSnapshot(rbFrame)) {
         console.log(`[Rollback] frame=${frameCount} → restoring to frame ${rbFrame}, re-simulating ${frameCount - rbFrame} frames`);
